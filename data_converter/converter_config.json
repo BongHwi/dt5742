@@ -13,7 +13,7 @@
   },
   "stage1": {
     "input_pattern": "wave_%d.dat",
-    "input_dir": "/Users/blim/EIC/caen/dt5742/Data/AC_LGAD_TEST/",
+    "input_dir": "../Data/AC_LGAD_TEST/",
     "input_is_ascii": false,
     "special_channel_file": "TR_0_0.dat",
     "enable_special_override": true,
