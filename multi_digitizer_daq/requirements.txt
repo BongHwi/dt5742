@@ -1,0 +1,22 @@
+# Multi-Digitizer DAQ System Dependencies
+
+# CAEN digitizer Python bindings
+# Note: Install CAEN libraries from https://www.caen.it first
+# Then: pip install caen-libs
+caen-libs>=1.0.0
+
+# Visualization
+matplotlib>=3.5.0
+numpy>=1.21.0
+
+# Keyboard input
+pynput>=1.7.6
+
+# Standard library modules used (no installation needed):
+# - json (configuration)
+# - logging (logging)
+# - threading (multi-threading)
+# - queue (thread-safe queues)
+# - struct (binary file format)
+# - dataclasses (configuration classes)
+# - pathlib (file paths)
