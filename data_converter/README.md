@@ -6,7 +6,9 @@ A three-stage pipeline for converting and analyzing CAEN DT5742 digitizer data.
 
 ```bash
 # 1. Setup ROOT environment
-source /opt/root6/root_install/bin/thisroot.sh # example!
+# Make sure root-config is in PATH; pick the setup for your system
+# macOS (Homebrew): source /opt/homebrew/bin/thisroot.sh
+# Ubuntu/Debian:    source /usr/local/bin/thisroot.sh   (or /usr/share/root/bin/thisroot.sh)
 
 # 2. Build
 make
@@ -95,15 +97,16 @@ print(f"Mean amplitude: {ch0['ampMax'].mean():.3f} V")
 
 ## Requirements
 
-- ROOT 6.x
-- HDF5 library (`brew install hdf5`)
-- simdjson library (`brew install simdjson`)
+- ROOT 6.x (`root-config` available in PATH)
+- HDF5 development libraries (pkg-config `hdf5`; e.g., `sudo apt install libhdf5-dev` on Ubuntu or `brew install hdf5` on macOS)
+- simdjson development libraries (pkg-config `simdjson`; e.g., `sudo apt install libsimdjson-dev` on Ubuntu or `brew install simdjson` on macOS)
 - C++17 compiler
 
 ## Troubleshooting
 
-**ROOT not found**: `source /opt/root6/root_install/bin/thisroot.sh`
-**HDF5 not found**: Edit `HDF5_PREFIX` in `Makefile`
+**ROOT not found**: source the appropriate `thisroot.sh` for your install (see Quick Start)
+**HDF5 not found**: ensure `pkg-config hdf5` works; otherwise set `HDF5_PREFIX` (e.g., `/usr` on Ubuntu or `/opt/homebrew/opt/hdf5` on macOS)
+**simdjson not found**: ensure `pkg-config simdjson` works; otherwise set `JSON_INCLUDES`/`JSON_LIBS` in `Makefile`
 **Input files not found**: Check `input_dir` in `converter_config.json`
 
 ## Documentation

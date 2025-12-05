@@ -327,11 +327,11 @@ make help          # Show help
 
 - **ROOT 6.x** - CERN data analysis framework
 - **HDF5 library** - High-performance data format
-  - macOS: `brew install hdf5` → `/opt/homebrew/opt/hdf5`
-  - Linux: Usually in `/usr` or `/usr/local`
+  - Install via package manager (`sudo apt install libhdf5-dev` on Ubuntu/Debian, `brew install hdf5` on macOS)
+  - Should be discoverable via `pkg-config hdf5`; otherwise set `HDF5_PREFIX` in `Makefile`
 - **simdjson** - Fast JSON parsing library
-  - macOS: `brew install simdjson` → `/opt/homebrew/lib`
-  - Linux: Build from source or install via package manager
+  - Install via package manager (`sudo apt install libsimdjson-dev` on Ubuntu/Debian, `brew install simdjson` on macOS)
+  - Should be discoverable via `pkg-config simdjson`; otherwise set `JSON_INCLUDES`/`JSON_LIBS` in `Makefile`
 - **C++17 compiler** - g++ or clang++
 - **Platform**: macOS or Linux
 
@@ -339,24 +339,26 @@ make help          # Show help
 
 **ROOT not found**:
 ```bash
-source /opt/root6/root_install/bin/thisroot.sh
+# Source the setup script shipped with your ROOT install
+# Examples:
+# macOS (Homebrew): source /opt/homebrew/bin/thisroot.sh
+# Ubuntu/Debian:    source /usr/local/bin/thisroot.sh   (or /usr/share/root/bin/thisroot.sh)
 ```
 
 **HDF5 not found**:
 ```bash
-# Find HDF5 installation
-brew --prefix hdf5  # macOS
-find /usr -name "hdf5.h"  # Linux
+# Check pkg-config
+pkg-config --libs hdf5
 
-# Edit Makefile and set HDF5_PREFIX
+# If missing, install HDF5 dev package (e.g., sudo apt install libhdf5-dev) or set HDF5_PREFIX (e.g., /usr or /opt/homebrew/opt/hdf5) in Makefile
 ```
 
 **simdjson not found**:
 ```bash
-# Install simdjson
-brew install simdjson  # macOS
+# Check pkg-config
+pkg-config --libs simdjson
 
-# Or edit Makefile INCLUDES and JSON_LIBS paths
+# If missing, install simdjson dev package (e.g., sudo apt install libsimdjson-dev) or set JSON_INCLUDES/JSON_LIBS in Makefile
 ```
 
 **Input files not found**:
