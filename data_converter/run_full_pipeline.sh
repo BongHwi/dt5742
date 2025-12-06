@@ -7,8 +7,11 @@
 
 set -e  # Exit on error
 
+# Resolve script directory so we can find configs/binaries when invoked elsewhere
+SCRIPT_DIR="$(cd -- "$(dirname "$0")" && pwd)"
+
 # Default configuration file (unified)
-PIPELINE_CONFIG="converter_config.json"
+PIPELINE_CONFIG="${SCRIPT_DIR}/converter_config.json"
 
 # Output directory is read from JSON configs (default: "output")
 # Edit converter_config.json (common.output_dir) to change output_dir
@@ -206,17 +209,17 @@ if [ "$RUN_STAGE1" = true ]; then
     fi
     echo ""
 
-    if [ ! -f "./convert_to_root" ]; then
-        echo "ERROR: convert_to_root executable not found"
+    if [ ! -f "${SCRIPT_DIR}/convert_to_root" ]; then
+        echo "ERROR: convert_to_root executable not found at ${SCRIPT_DIR}/convert_to_root"
         echo "Please run 'make' to build the executables"
         exit 1
     fi
 
     # Note: convert_to_root reads output_dir from config and automatically creates output_dir/root/
     if [ "$USE_PARALLEL" = true ]; then
-        ./convert_to_root --config "$PIPELINE_CONFIG" --root "$RAW_ROOT" --parallel
+        "${SCRIPT_DIR}/convert_to_root" --config "$PIPELINE_CONFIG" --root "$RAW_ROOT" --parallel
     else
-        ./convert_to_root --config "$PIPELINE_CONFIG" --root "$RAW_ROOT"
+        "${SCRIPT_DIR}/convert_to_root" --config "$PIPELINE_CONFIG" --root "$RAW_ROOT"
     fi
 
     if [ $? -ne 0 ]; then
@@ -244,13 +247,13 @@ if [ "$RUN_STAGE2" = true ]; then
         echo "  Mode:   PARALLEL"
         echo ""
 
-        if [ ! -x "./parallel_analyze.sh" ]; then
-            echo "ERROR: parallel_analyze.sh not found or not executable"
+        if [ ! -x "${SCRIPT_DIR}/parallel_analyze.sh" ]; then
+            echo "ERROR: parallel_analyze.sh not found or not executable at ${SCRIPT_DIR}/parallel_analyze.sh"
             echo "Please run 'make' to build the executables"
             exit 1
         fi
 
-        ./parallel_analyze.sh --config "$PIPELINE_CONFIG" --input "$RAW_ROOT" --output "$ANALYSIS_ROOT"
+        "${SCRIPT_DIR}/parallel_analyze.sh" --config "$PIPELINE_CONFIG" --input "$RAW_ROOT" --output "$ANALYSIS_ROOT"
 
         if [ $? -ne 0 ]; then
             echo "ERROR: Stage 2 (parallel) failed"
@@ -260,13 +263,13 @@ if [ "$RUN_STAGE2" = true ]; then
         echo "  Mode:   SEQUENTIAL"
         echo ""
 
-        if [ ! -f "./analyze_waveforms" ]; then
-            echo "ERROR: analyze_waveforms executable not found"
+        if [ ! -f "${SCRIPT_DIR}/analyze_waveforms" ]; then
+            echo "ERROR: analyze_waveforms executable not found at ${SCRIPT_DIR}/analyze_waveforms"
             echo "Please run 'make' to build the executables"
             exit 1
         fi
 
-        ./analyze_waveforms --config "$PIPELINE_CONFIG" --input "$RAW_ROOT" --output "$ANALYSIS_ROOT"
+        "${SCRIPT_DIR}/analyze_waveforms" --config "$PIPELINE_CONFIG" --input "$RAW_ROOT" --output "$ANALYSIS_ROOT"
 
         if [ $? -ne 0 ]; then
             echo "ERROR: Stage 2 failed"
@@ -280,8 +283,8 @@ fi
 if [ "$RUN_STAGE3" = true ]; then
     echo "Stage 3: Exporting analyzed data to HDF5 format..."
 
-    if [ ! -f "./export_to_hdf5" ]; then
-        echo "ERROR: export_to_hdf5 executable not found"
+    if [ ! -f "${SCRIPT_DIR}/export_to_hdf5" ]; then
+        echo "ERROR: export_to_hdf5 executable not found at ${SCRIPT_DIR}/export_to_hdf5"
         echo "Please run 'make' to build the executables"
         exit 1
     fi
@@ -323,7 +326,7 @@ except:
                 echo "    Input:  $OUTPUT_DIR/root/$ANALYSIS_ROOT"
                 echo "    Output: $OUTPUT_DIR/hdf5/$OUTPUT_FILE"
 
-                ./export_to_hdf5 --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
+                "${SCRIPT_DIR}/export_to_hdf5" --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
                     --output "$OUTPUT_FILE" --output-dir "$OUTPUT_DIR" \
                     --sensor-id "$SENSOR_ID" --sensor-mapping "$PIPELINE_CONFIG" \
                     --column-id 1
@@ -338,7 +341,7 @@ except:
             echo "    Input:  $OUTPUT_DIR/root/$ANALYSIS_ROOT"
             echo "    Output: $OUTPUT_DIR/hdf5/$ANALYSIS_HDF5"
 
-            ./export_to_hdf5 --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
+            "${SCRIPT_DIR}/export_to_hdf5" --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
                 --output "$ANALYSIS_HDF5" --output-dir "$OUTPUT_DIR" \
                 --sensor-mapping "$PIPELINE_CONFIG" --column-id 1
 
