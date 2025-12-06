@@ -55,15 +55,31 @@ NsamplesPolicy ResolveNsamplesPolicy(const std::string &policyText) {
 }
 
 bool RunAnalysis(const AnalysisConfig &cfg, Long64_t eventStart = -1, Long64_t eventEnd = -1) {
+  // Maximum file size for waveform plots: 4 GB
+  const Long64_t MAX_PLOTS_FILE_SIZE = 4LL * 1024 * 1024 * 1024;  // 4 GB in bytes
+
   // Create waveform plots ROOT file if enabled
   TFile *waveformPlotsFile = nullptr;
-  auto openWaveformPlotsFile = [&](TFile *&outFile) {
+  int waveformPlotsFileCounter = 0;
+
+  auto openWaveformPlotsFile = [&](TFile *&outFile, int fileNum) {
     if (!cfg.waveform_plots_enabled) {
       return;
     }
-    std::string waveformPlotsFileName =
-        BuildOutputPath(cfg.output_dir(), "waveform_plots",
-                        cfg.waveform_plots_dir + ".root");
+
+    std::string baseFileName = cfg.waveform_plots_dir;
+    std::string waveformPlotsFileName;
+
+    if (fileNum == 0) {
+      waveformPlotsFileName = BuildOutputPath(cfg.output_dir(), "waveform_plots",
+                                               baseFileName + ".root");
+    } else {
+      char suffix[32];
+      std::snprintf(suffix, sizeof(suffix), "_%03d.root", fileNum);
+      waveformPlotsFileName = BuildOutputPath(cfg.output_dir(), "waveform_plots",
+                                               baseFileName + suffix);
+    }
+
     if (!EnsureParentDirectory(waveformPlotsFileName)) {
       std::cerr << "WARNING: Failed to create waveform plots output directory for "
                 << waveformPlotsFileName << std::endl;
@@ -78,12 +94,37 @@ bool RunAnalysis(const AnalysisConfig &cfg, Long64_t eventStart = -1, Long64_t e
       return;
     }
     std::cout << "Waveform plots output enabled. Saving to: " << waveformPlotsFileName << std::endl;
-    if (cfg.waveform_plots_only_signal) {
+    if (cfg.waveform_plots_only_signal && fileNum == 0) {
       std::cout << "  Only saving waveforms with detected signals (SNR > "
                 << cfg.snr_threshold << ")" << std::endl;
     }
   };
-  openWaveformPlotsFile(waveformPlotsFile);
+
+  auto checkAndRotateWaveformPlotsFile = [&](TFile *&outFile) {
+    if (!outFile || outFile->IsZombie()) {
+      return;
+    }
+
+    Long64_t currentSize = outFile->GetSize();
+    if (currentSize >= MAX_PLOTS_FILE_SIZE) {
+      std::cout << "Waveform plots file size reached " << (currentSize / (1024.0 * 1024.0 * 1024.0))
+                << " GB. Rotating to new file..." << std::endl;
+
+      // Close current file
+      std::string currentFileName = outFile->GetName();
+      outFile->Close();
+      delete outFile;
+      outFile = nullptr;
+
+      std::cout << "Saved waveform plots to: " << currentFileName << std::endl;
+
+      // Open new file with incremented counter
+      waveformPlotsFileCounter++;
+      openWaveformPlotsFile(outFile, waveformPlotsFileCounter);
+    }
+  };
+
+  openWaveformPlotsFile(waveformPlotsFile, waveformPlotsFileCounter);
 
   // Build input path: output_dir/root/input_root
   std::string inputPath = BuildOutputPath(cfg.output_dir(), "root", cfg.input_root());
@@ -460,6 +501,11 @@ bool RunAnalysis(const AnalysisConfig &cfg, Long64_t eventStart = -1, Long64_t e
       waveformPlotsFile->cd();
     }
 
+    // Check if waveform plots file needs rotation (after saving all plots for this event)
+    if (waveformPlotsFile) {
+      checkAndRotateWaveformPlotsFile(waveformPlotsFile);
+    }
+
     outputTree->Fill();
   }
 
@@ -482,11 +528,15 @@ bool RunAnalysis(const AnalysisConfig &cfg, Long64_t eventStart = -1, Long64_t e
 
   // Close waveform plots file if it was created
   if (waveformPlotsFile) {
+    std::string finalFileName = waveformPlotsFile->GetName();
     waveformPlotsFile->cd();
     waveformPlotsFile->Close();
     delete waveformPlotsFile;
-    std::string waveformPlotsFullPath = BuildOutputPath(cfg.output_dir(), "waveform_plots", cfg.waveform_plots_dir + ".root");
-    std::cout << "Waveform plots output saved to " << waveformPlotsFullPath << std::endl;
+    std::cout << "Waveform plots output saved to " << finalFileName << std::endl;
+    if (waveformPlotsFileCounter > 0) {
+      std::cout << "  Total files created: " << (waveformPlotsFileCounter + 1)
+                << " (split due to 4GB size limit)" << std::endl;
+    }
   }
 
   std::string outputFullPath = BuildOutputPath(cfg.output_dir(), "root", cfg.output_root());
