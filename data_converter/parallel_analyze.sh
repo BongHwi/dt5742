@@ -214,6 +214,13 @@ process_chunk() {
         mv "$OUTPUT_DIR/waveform_plots/${CHUNK_PLOTS}.root" "$TEMP_DIR/${CHUNK_PLOTS}.root"
     fi
 
+    # Move quality check files to temp directory if they exist
+    # Quality check files follow the same naming scheme as waveform plots
+    local CHUNK_QC=$(echo "$CHUNK_PLOTS" | sed 's/waveform_plots/quality_check/')
+    if [ -f "$OUTPUT_DIR/quality_check/${CHUNK_QC}.root" ]; then
+        mv "$OUTPUT_DIR/quality_check/${CHUNK_QC}.root" "$TEMP_DIR/${CHUNK_QC}.root"
+    fi
+
     if [ $? -eq 0 ]; then
         echo "  Chunk $CHUNK_ID: DONE"
     else
@@ -325,6 +332,32 @@ if [ -f "${PLOTS_FILES[0]}" ]; then
     fi
 else
     echo "No waveform plots files found (plots may be disabled in config)"
+fi
+echo ""
+
+# Merge quality check files if they exist
+QC_FILES=("$TEMP_DIR"/quality_check_chunk_*.root)
+if [ -f "${QC_FILES[0]}" ]; then
+    echo "Merging quality check files..."
+
+    QC_OUTPUT="$OUTPUT_DIR/quality_check/quality_check.root"
+
+    # Ensure output directory exists
+    mkdir -p "$OUTPUT_DIR/quality_check"
+
+    hadd -f "$QC_OUTPUT" "$TEMP_DIR"/quality_check_chunk_*.root > "$TEMP_DIR/merge_qc.log" 2>&1
+
+    if [ $? -eq 0 ]; then
+        echo "Merged quality check files into $QC_OUTPUT"
+
+        # Get file size and report
+        QC_SIZE=$(ls -lh "$QC_OUTPUT" | awk '{print $5}')
+        echo "  Quality check file size: $QC_SIZE"
+    else
+        echo "WARNING: Failed to merge quality check files (see $TEMP_DIR/merge_qc.log)"
+    fi
+else
+    echo "No quality check files found (may be disabled in config)"
 fi
 echo ""
 

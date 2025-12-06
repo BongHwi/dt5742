@@ -129,8 +129,22 @@ bool RunAnalysis(const AnalysisConfig &cfg, Long64_t eventStart = -1, Long64_t e
   // Create quality check ROOT file
   TFile *qualityCheckFile = nullptr;
   if (cfg.waveform_plots_enabled) {
+    // Use same naming scheme as waveform_plots_dir for quality check
+    // If waveform_plots_dir is "waveform_plots", use "quality_check"
+    // If waveform_plots_dir is "waveform_plots_chunk_0", use "quality_check_chunk_0"
+    std::string qualityCheckBaseName = cfg.waveform_plots_dir;
+
+    // Replace "waveform_plots" with "quality_check" in the base name
+    size_t pos = qualityCheckBaseName.find("waveform_plots");
+    if (pos != std::string::npos) {
+      qualityCheckBaseName.replace(pos, std::string("waveform_plots").length(), "quality_check");
+    } else {
+      // Fallback: just use "quality_check" prefix
+      qualityCheckBaseName = "quality_check_" + qualityCheckBaseName;
+    }
+
     std::string qualityCheckFileName = BuildOutputPath(cfg.output_dir(), "quality_check",
-                                                       "quality_check.root");
+                                                       qualityCheckBaseName + ".root");
     if (!EnsureParentDirectory(qualityCheckFileName)) {
       std::cerr << "WARNING: Failed to create quality_check output directory for "
                 << qualityCheckFileName << std::endl;
