@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Full waveform processing pipeline
-# Stage 1: Convert binary/ASCII to ROOT
-# Stage 2: Analyze waveforms
-# Stage 3: Export to HDF5
+# Stage 1 (waveform_converter): Convert binary/ASCII to ROOT
+# Stage 2 (waveform_analyzer): Analyze waveforms
+# Stage 3 (hdf5_exporter): Export to HDF5
 
 set -e  # Exit on error
 
@@ -39,12 +39,12 @@ Options:
     --raw-root FILE          Raw ROOT filename (default: waveforms.root)
     --analysis-root FILE     Analysis ROOT filename (default: waveforms_analyzed.root)
     --analysis-hdf5 FILE     Analysis HDF5 filename (default: waveforms_analyzed.h5)
-    --stage1-only            Run only stage 1 (convert to ROOT)
-    --stage2-only            Run only stage 2 (analysis)
-    --stage3-only            Run only stage 3 (export to HDF5)
-    --skip-stage1            Skip stage 1
-    --skip-stage2            Skip stage 2
-    --skip-stage3            Skip stage 3
+    --stage1-only            Run only stage 1 (waveform_converter)
+    --stage2-only            Run only stage 2 (waveform_analyzer)
+    --stage3-only            Run only stage 3 (hdf5_exporter)
+    --skip-stage1            Skip stage 1 (waveform_converter)
+    --skip-stage2            Skip stage 2 (waveform_analyzer)
+    --skip-stage3            Skip stage 3 (hdf5_exporter)
     --parallel               Force parallel processing (overrides config auto-detection)
     --verbose                Verbose output
     -h, --help               Show this help message
@@ -56,9 +56,9 @@ Parallel Processing:
     Use --parallel to force parallel mode regardless of config settings.
 
 Stages:
-    Stage 1: convert_to_root     - Convert binary/ASCII waveforms to ROOT format
-    Stage 2: analyze_waveforms   - Extract timing and amplitude features
-    Stage 3: export_to_hdf5      - Export analyzed ROOT data to HDF5 format
+    Stage 1: waveform_converter (convert_to_root)   - Convert binary/ASCII waveforms to ROOT format
+    Stage 2: waveform_analyzer (analyze_waveforms)  - Extract timing and amplitude features
+    Stage 3: hdf5_exporter (export_to_hdf5)         - Export analyzed ROOT data to HDF5 format
 
 Output Organization:
     All outputs are organized in subdirectories (default: output/):
@@ -293,7 +293,7 @@ import json, sys
 try:
     with open('$PIPELINE_CONFIG') as f:
         config = json.load(f)
-        stage2 = config.get('stage2', {})
+        stage2 = config.get('waveform_analyzer', {})
         sensor_mapping = stage2.get('sensor_mapping', {})
         sensor_ids = sensor_mapping.get('sensor_ids', [])
         unique_ids = sorted(set(sensor_ids))
@@ -313,35 +313,37 @@ except:
         SENSOR_IDS=""
     fi
 
-    # Export analysis features if they exist
+    # Export to Corryvreckan HDF5 format if analysis exists
     if [ -f "$OUTPUT_DIR/root/$ANALYSIS_ROOT" ] && [ "$RUN_STAGE2" = true ] || [ "$RUN_STAGE2" = false ]; then
         if [ -n "$SENSOR_IDS" ]; then
-            # Export per sensor
+            # Export per sensor in Corryvreckan format
             for SENSOR_ID in $SENSOR_IDS; do
-                OUTPUT_FILE="waveforms_analyzed_sensor$(printf '%02d' $SENSOR_ID).h5"
-                echo "  Exporting analysis features for sensor $SENSOR_ID..."
+                OUTPUT_FILE="waveforms_corry_sensor$(printf '%02d' $SENSOR_ID).h5"
+                echo "  Exporting Corryvreckan Hits for sensor $SENSOR_ID..."
                 echo "    Input:  $OUTPUT_DIR/root/$ANALYSIS_ROOT"
                 echo "    Output: $OUTPUT_DIR/hdf5/$OUTPUT_FILE"
 
-                ./export_to_hdf5 --mode analysis --input "$ANALYSIS_ROOT" --tree Analysis \
+                ./export_to_hdf5 --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
                     --output "$OUTPUT_FILE" --output-dir "$OUTPUT_DIR" \
-                    --sensor-id "$SENSOR_ID" --sensor-mapping "$PIPELINE_CONFIG"
+                    --sensor-id "$SENSOR_ID" --sensor-mapping "$PIPELINE_CONFIG" \
+                    --column-id 1
 
                 if [ $? -ne 0 ]; then
-                    echo "WARNING: Analysis feature export failed for sensor $SENSOR_ID (continuing anyway)"
+                    echo "WARNING: Corryvreckan export failed for sensor $SENSOR_ID (continuing anyway)"
                 fi
             done
         else
-            # Export all channels to single file
-            echo "  Exporting analysis features..."
+            # Export all channels to single file in Corryvreckan format
+            echo "  Exporting Corryvreckan Hits (all channels)..."
             echo "    Input:  $OUTPUT_DIR/root/$ANALYSIS_ROOT"
             echo "    Output: $OUTPUT_DIR/hdf5/$ANALYSIS_HDF5"
 
-            ./export_to_hdf5 --mode analysis --input "$ANALYSIS_ROOT" --tree Analysis \
-                --output "$ANALYSIS_HDF5" --output-dir "$OUTPUT_DIR"
+            ./export_to_hdf5 --mode corry --input "$ANALYSIS_ROOT" --tree Analysis \
+                --output "$ANALYSIS_HDF5" --output-dir "$OUTPUT_DIR" \
+                --sensor-mapping "$PIPELINE_CONFIG" --column-id 1
 
             if [ $? -ne 0 ]; then
-                echo "WARNING: Analysis feature export failed (continuing anyway)"
+                echo "WARNING: Corryvreckan export failed (continuing anyway)"
             fi
         fi
         echo ""
