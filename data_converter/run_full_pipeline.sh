@@ -13,8 +13,7 @@ SCRIPT_DIR="$(cd -- "$(dirname "$0")" && pwd)"
 # Default configuration file (unified)
 PIPELINE_CONFIG="${SCRIPT_DIR}/converter_config.json"
 
-# Output directory is read from JSON configs (default: "output")
-# Edit converter_config.json (common.output_dir) to change output_dir
+# Output directory will be loaded from config (common.output_dir)
 OUTPUT_DIR="output"
 
 # Default intermediate/output files (relative names). For a minimal smoke test,
@@ -162,6 +161,54 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Normalize PIPELINE_CONFIG to an absolute path.
+# Prefer the user’s working directory; if not found, fall back to the script directory.
+if [[ "$PIPELINE_CONFIG" != /* ]]; then
+    CWD_CONFIG="$(cd -- "$(dirname "$PIPELINE_CONFIG")" && pwd)/$(basename "$PIPELINE_CONFIG")"
+    SCRIPT_CONFIG="$(cd -- "$SCRIPT_DIR" && cd -- "$(dirname "$PIPELINE_CONFIG")" && pwd)/$(basename "$PIPELINE_CONFIG")"
+
+    if [ -f "$CWD_CONFIG" ]; then
+        PIPELINE_CONFIG="$CWD_CONFIG"
+    elif [ -f "$SCRIPT_CONFIG" ]; then
+        PIPELINE_CONFIG="$SCRIPT_CONFIG"
+    else
+        PIPELINE_CONFIG="$CWD_CONFIG"
+    fi
+fi
+
+# Ensure the config file exists before continuing
+if [ ! -f "$PIPELINE_CONFIG" ]; then
+    echo "ERROR: Pipeline configuration file '$PIPELINE_CONFIG' not found"
+    exit 1
+fi
+
+# Require python3 for config parsing
+if ! command -v python3 &> /dev/null; then
+    echo "ERROR: python3 not found. Required for config parsing"
+    exit 1
+fi
+
+# Load output_dir from config if present
+if [ -f "$PIPELINE_CONFIG" ]; then
+    RAW_OUTPUT_DIR=$(python3 - "$PIPELINE_CONFIG" <<'EOF'
+import json, sys
+cfg_path = sys.argv[1]
+try:
+    with open(cfg_path) as f:
+        cfg = json.load(f)
+    print(cfg.get("common", {}).get("output_dir", "output"))
+except Exception:
+    print("output")
+EOF
+)
+    CONFIG_DIR="$(cd -- "$(dirname "$PIPELINE_CONFIG")" && pwd)"
+    # If the config's output_dir is relative, resolve it relative to the config file directory
+    case "$RAW_OUTPUT_DIR" in
+        /*) OUTPUT_DIR="$RAW_OUTPUT_DIR" ;;
+        *) OUTPUT_DIR="${CONFIG_DIR}/${RAW_OUTPUT_DIR}" ;;
+    esac
+fi
 
 # Check ROOT environment
 if ! command -v root-config &> /dev/null; then

@@ -5,6 +5,9 @@
 
 set -e
 
+# Resolve script directory so we can find binaries regardless of caller cwd
+SCRIPT_DIR="$(cd -- "$(dirname "$0")" && pwd)"
+
 # Default values (can be overridden by config or command line)
 DEFAULT_CONFIG="converter_config.json"
 DEFAULT_CHUNK_SIZE=100
@@ -90,8 +93,10 @@ if [ ! -f "$CONFIG" ]; then
     exit 1
 fi
 
-if [ ! -f "./analyze_waveforms" ]; then
-    echo "ERROR: analyze_waveforms executable not found"
+ANALYZE_BIN="${SCRIPT_DIR}/analyze_waveforms"
+
+if [ ! -x "$ANALYZE_BIN" ]; then
+    echo "ERROR: analyze_waveforms executable not found at $ANALYZE_BIN"
     echo "Please run 'make' to build the executables"
     exit 1
 fi
@@ -190,7 +195,7 @@ process_chunk() {
 
     echo "  Chunk $CHUNK_ID: events [$START_EVENT, $END_EVENT)"
 
-    ./analyze_waveforms \
+    "$ANALYZE_BIN" \
         --config "$CONFIG" \
         --input "$INPUT_ROOT" \
         --output "$(basename $CHUNK_OUTPUT)" \
